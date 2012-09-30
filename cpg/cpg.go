@@ -101,12 +101,12 @@ func (cpg *Cpg) txloop(errch chan<- error) {
 	var buffer unsafe.Pointer
 
 	err := makeErr("cpg_zcb_alloc", C.cpg_zcb_alloc(cpg.handle, ZCB_SIZE, &buffer))
-	defer C.cpg_zcb_free(cpg.handle, buffer)
 
 	if err != nil {
 		errch <- err
 		return
 	}
+	defer C.cpg_zcb_free(cpg.handle, buffer)
 
 	for msg := range cpg.tx {
 		if len(msg) > ZCB_SIZE {
