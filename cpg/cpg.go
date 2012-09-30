@@ -81,21 +81,18 @@ func makeErr(msg string, err C.cs_error_t) error {
 }
 
 func cpgname(name string) *C.struct_cpg_name {
-	var cn *C.struct_cpg_name
+	if len(name) >= C.CPG_MAX_NAME_LENGTH {
+		return nil
+	}
 
-	cn = (*C.struct_cpg_name)(C.malloc(C.size_t(unsafe.Sizeof(*cn))))
+	var cn C.struct_cpg_name
 
-	cs := C.CString(name)
-	defer C.free(unsafe.Pointer(cs))
+	cs := []byte(name)
 
-	cn.length = C.uint32_t(C.strlen(cs))
-	C.strncpy(&cn.value[0], cs, C.size_t(unsafe.Sizeof(cn.value)))
+	cn.length = C.uint32_t(len(cs))
+	C.strncpy(&cn.value[0], (*C.char)((unsafe.Pointer)(&cs[0])), C.size_t(unsafe.Sizeof(cn.value)))
 
-	return cn
-}
-
-func freecpgname(cn *C.struct_cpg_name) {
-	C.free(unsafe.Pointer(cn))
+	return &cn
 }
 
 func (cpg *Cpg) txloop(errch chan<- error) {
@@ -288,7 +285,6 @@ func Join(group string) (*Cpg, error) {
 	}
 
 	cn := cpgname(group)
-	defer freecpgname(cn)
 
 	err = makeErr("cpg_join", C.cpg_join(cpg.handle, cn))
 	if err != nil {
@@ -317,7 +313,6 @@ func Join(group string) (*Cpg, error) {
 func (cpg *Cpg) Leave() {
 	if cpg.group != nil {
 		cn := cpgname(*cpg.group)
-		defer freecpgname(cn)
 
 		cpg.group = nil
 
