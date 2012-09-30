@@ -274,15 +274,28 @@ func (cpg *Cpg) waitself() error {
 	return nil
 }
 
+func cpg_model_init() (C.cpg_handle_t, error) {
+	var handle C.cpg_handle_t
+
+	err := makeErr("cpg_model_initialize",
+		C.cpg_model_initialize(&handle, C.CPG_MODEL_V1, C.cpg_model, nil))
+
+	return handle, err
+}
+
+func cpg_model_finalize(handle C.cpg_handle_t) {
+	C.cpg_finalize(handle)
+}
+
 func Join(group string) (*Cpg, error) {
 	cpg := &Cpg{}
 	runtime.SetFinalizer(cpg, func(cpg *Cpg) { cpg.Leave() })
 
-	err := makeErr("cpg_model_initialize",
-		C.cpg_model_initialize(&cpg.handle, C.CPG_MODEL_V1, C.cpg_model, nil))
+	handle, err := cpg_model_init()
 	if err != nil {
 		return nil, err
 	}
+	cpg.handle = handle
 
 	cn := cpgname(group)
 
@@ -330,7 +343,7 @@ func (cpg *Cpg) Leave() {
 	}
 
 	if cpg.handle != 0 {
-		C.cpg_finalize(cpg.handle)
+		cpg_model_finalize(cpg.handle)
 		cpg.handle = 0
 	}
 }
