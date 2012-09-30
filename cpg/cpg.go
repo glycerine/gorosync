@@ -108,17 +108,23 @@ func (cpg *Cpg) txloop(errch chan<- error) {
 	}
 	defer C.cpg_zcb_free(cpg.handle, buffer)
 
+	var bufslice []byte
+	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&bufslice))
+	hdr.Cap = ZCB_SIZE
+	hdr.Len = ZCB_SIZE
+	hdr.Data = uintptr(buffer)
+
 	for msg := range cpg.tx {
 		if len(msg) > ZCB_SIZE {
 			errch <- makeErr("msg too long", C.CS_ERR_TOO_BIG)
 			continue
 		}
 
-		C.memcpy(buffer, unsafe.Pointer(&msg[0]), C.size_t(len(msg)))
+		sz := copy(bufslice, msg)
 
 		err = makeErr("cpg_zcb_mcast_joined",
 			C.cpg_zcb_mcast_joined(cpg.handle, C.CPG_TYPE_AGREED,
-				buffer, C.size_t(len(msg))))
+				buffer, C.size_t(sz)))
 		if err != nil {
 			errch <- err
 			break
