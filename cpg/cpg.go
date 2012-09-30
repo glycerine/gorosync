@@ -81,16 +81,16 @@ func makeErr(msg string, err C.cs_error_t) error {
 }
 
 func cpgname(name string) *C.struct_cpg_name {
-	if len(name) >= C.CPG_MAX_NAME_LENGTH {
-		return nil
-	}
-
 	var cn C.struct_cpg_name
 
-	cs := []byte(name)
+	var nameslice []byte
+	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&nameslice))
+	hdr.Cap = C.CPG_MAX_NAME_LENGTH
+	hdr.Len = C.CPG_MAX_NAME_LENGTH
+	hdr.Data = uintptr(unsafe.Pointer(&cn.value[0]))
 
-	cn.length = C.uint32_t(len(cs))
-	C.strncpy(&cn.value[0], (*C.char)((unsafe.Pointer)(&cs[0])), C.size_t(unsafe.Sizeof(cn.value)))
+	sz := copy(nameslice, name)
+	cn.length = C.uint32_t(sz)
 
 	return &cn
 }
